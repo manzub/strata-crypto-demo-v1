@@ -82,6 +82,7 @@ class Wallet {
         return {
             id: uuidV1(),
             timestamp: Date.now(),
+            status: 'pending',
             sender,
             recipient,
             amount,

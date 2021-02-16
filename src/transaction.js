@@ -3,7 +3,7 @@
     - is valid transaction
 */
 
-const { verifySignature } = require("./utils");
+const { verifySignature, updateWalletBalance } = require("./utils");
 const { newTransactionMap } = require("./wallet");
 
 class Transaction {

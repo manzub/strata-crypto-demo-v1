@@ -12,13 +12,16 @@ class Miner {
     }
 
     mineTransaction(walletId) {
-        const validTransactions = this.transactionPool.validTransactions();
-        const randTransaction = validTransactions[Math.floor(Math.random()*validTransactions.length)]
-        const { sender, recipient, amount } = randTransaction;
-        this.blockchain.addBlock({ transaction:randTransaction })
-        this.transactionPool.removeTransaction(randTransaction)
-        this.wallet.rewardTransaction(walletId)
-        return { sender, recipient, amount };
+        const pendingTransactions = this.transactionPool.pendingTransactions();
+        if(pendingTransactions[0]) {
+            const randTransaction = pendingTransactions[Math.floor(Math.random()*pendingTransactions.length)]
+            const { sender, recipient, amount } = randTransaction;
+            this.blockchain.addBlock({ transaction:randTransaction })
+            this.transactionPool.updateTransaction(randTransaction)
+            this.wallet.rewardTransaction(walletId)
+            return { sender, recipient, amount };
+        }
+        return null;
     }
 }
 

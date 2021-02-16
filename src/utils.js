@@ -8,7 +8,7 @@ const fs = require("fs");
 const crypto = require("crypto");
 const { Keccak } = require("sha3");
 const { v1: uuidV1 } = require("uuid");
-const { ESC_STR, BLOCKS_DIR, WALLETS_DIR, INITIAL_BALANCE } = require("./config");
+const { ESC_STR, BLOCKS_DIR, WALLETS_DIR, INITIAL_BALANCE, POOL_DIR } = require("./config");
 
 const createNewHash = (data) => {
     const hash = crypto.createHash('sha256')
@@ -18,12 +18,38 @@ const createNewHash = (data) => {
 
 const saveNewBlock = (data) => {
     let dataToWrite = JSON.stringify(data).replaceAll(':',ESC_STR);
-    fs.writeFile(BLOCKS_DIR+`data_${data.timestamp}.txt`,dataToWrite,(err)=>console.log(err))
+    fs.writeFile(BLOCKS_DIR+`data_${data.timestamp}.txt`,dataToWrite,(err)=>console.log(err || 'New Block created'))
 }
 
 const saveWalletData = ({ dataToWrite, walletId }) => {
-    fs.writeFile(WALLETS_DIR+`${walletId}__key.txt`, dataToWrite, (err)=>console.log(err))
+    fs.writeFile(WALLETS_DIR+`${walletId}__key.txt`, dataToWrite, (err)=>console.log(err || 'New Wallet Created'))
     fs.writeFile(WALLETS_DIR+`${walletId}__bal.txt`, INITIAL_BALANCE.toFixed(2), (err)=>console.log(err))
+}
+
+const newLocalPool = (tr) => {
+    fs.createWriteStream(POOL_DIR+'tp.dat',{flags:'a'}).write(JSON.stringify(tr)+'\n',(err)=>console.log(err || 'Pool Updated'))
+}
+
+const updateLocalPool = (transaction) => {
+    fs.readFile(POOL_DIR+'tp.dat',(err, data)=>{
+        if(!err) {
+            let line = data.toString().split(/\r?\n/);
+            if(line[0]!=''){
+                line.forEach((param, index)=>{
+                    let tr = param != '' ? JSON.parse(param) : undefined
+                    if(tr){
+                        if(transaction.id == tr.id) {
+                            line[index] = JSON.stringify(transaction)
+                        }else{
+                            line[index] = JSON.stringify(tr)
+                        }
+                    }
+                })
+                let dataToWrite = line.join("\n")
+                fs.writeFile(POOL_DIR+'tp.dat',dataToWrite,(err)=>console.log('Local Pool Updated'))
+            }
+        }
+    })
 }
 
 const updateWalletBalance = ({ walletId, newBalance }) => {
@@ -67,5 +93,7 @@ module.exports = {
     verifySignature,
     signTransaction,
     uuidV1,
+    newLocalPool,
+    updateLocalPool,
     utils:fs,
 }
