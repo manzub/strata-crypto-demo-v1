@@ -1,5 +1,14 @@
 {
   "users": [],
-  "api": [],
-  "tokens": []
+  "api": [
+    {
+      "key": "0xb90d7a17af14e48ced474e7a6a949d542fdf113e"
+    }
+  ],
+  "tokens": [
+    {
+      "id": "ae7121b0-710f-11eb-9b1c-f90703236be6",
+      "used": true
+    }
+  ]
 }

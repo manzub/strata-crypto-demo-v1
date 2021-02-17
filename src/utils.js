@@ -30,7 +30,7 @@ const newLocalPool = (tr) => {
     fs.createWriteStream(POOL_DIR+'tp.dat',{flags:'a'}).write(JSON.stringify(tr)+'\n',(err)=>console.log(err || 'Pool Updated'))
 }
 
-const updateLocalPool = (transaction) => {
+const updateLocalPool = (transaction, del = null) => {
     fs.readFile(POOL_DIR+'tp.dat',(err, data)=>{
         if(!err) {
             let line = data.toString().split(/\r?\n/);
@@ -39,7 +39,7 @@ const updateLocalPool = (transaction) => {
                     let tr = param != '' ? JSON.parse(param) : undefined
                     if(tr){
                         if(transaction.id == tr.id) {
-                            line[index] = JSON.stringify(transaction)
+                            line[index] = del ? '' : JSON.stringify(transaction)
                         }else{
                             line[index] = JSON.stringify(tr)
                         }

@@ -31,10 +31,13 @@ class TransactionPool {
     updateTransaction(transaction) {
         this.transactionPool[transaction.id].status = 'completed';
         updateLocalPool(this.transactionPool[transaction.id])
-        // let obj = Object.values(this.transactionPool)
-        //     .filter(t => t.id !== transaction.id)
-        // this.clear();
-        // obj.forEach(elem=>this.addTransaction(elem))
+    }
+
+    removeTranaction(param) {
+        let obj = Object.values(this.transactionPool).filter(tr => tr.id === param.id)
+        obj.forEach(tr => this.addTransaction(tr))
+        updateLocalPool(param, 1);
+        return true
     }
 
     loadTransactionPool() {

@@ -84,38 +84,46 @@ app.get("/", (req, res)=>{
     res.json({})
 })
 
-app.post("/new-api", (req, res)=>{
-    const { token } = req.body;
-    let isExists = lowdb.get('token').find({id:token}).value()
+app.post("/api/new-api", (req, res)=>{
+    const { token, api_key } = req.body;
+    let isExist = lowdb.get('api').find({key:api_key}).value()
     let msg = {}
-    if(isExists) {
-        let new_api = '0x'+createNewHash(token).substring(0,15);
-        msg = { status:1,data:new_api,alert:'New Api Created' }
-        res.json(msg)
-    }else{
-        msg = { status:1,data:'Invalid Token' }
-        res.json(msg)
-    }
+    if(isExist) {
+        let isTokenExists = lowdb.get('tokens').find({id:token,used:false}).value()
+        if(isTokenExists) {
+            let new_api = '0x'+createNewHash(token).substring(0,40);
+            lowdb.get('tokens').find({id:token}).assign({used:true}).write()
+            lowdb.get('api').push({key:new_api}).write()
+            msg = { status:1,data:new_api,alert:'New Api Created' }
+        }else{
+            msg = { status:1,alert:'Invalid Token' }
+        }
+    }else msg = {status:0,alert:'Invalid API Key'}
+    res.json(msg)
 })
 
 app.post("/api/new-api-token", (req, res)=>{
-    const { id:transaction_id, sender } = req.body;
-    let validTransactions = transactionPool.validTransactions();
-    let newToken;
-    console.log(validTransactions);
-    validTransactions.every(tr => {
-        if(tr.id === transaction_id && tr.status == 'completed' && sender == tr.sender) {
-            let amount_in_usd = 2.00;
-            let strata_eqv = ((1/CURRENT_VALUE)*amount_in_usd).toFixed(2)
-            if(tr.recipient == SCRIPT_ACCOUNT && tr.account >= strata_eqv) {
-                newToken = uuidV1()
-                console.log(newToken);
-                lowdb.get('tokens').push({id:newToken}).write()
+    const { id:transaction_id, sender, api_key } = req.body;
+    let isExist = lowdb.get('api').find({key:api_key}).value()
+    let msg = {}
+    if(isExist) {
+        let validTransactions = transactionPool.validTransactions();
+        let newToken;
+        validTransactions.every((tr, index) => {
+            if(tr.id === transaction_id && tr.status == 'completed' && sender == tr.sender) {
+                let amount_in_usd = 1000.00;
+                let strata_eqv = ((1/CURRENT_VALUE)*amount_in_usd).toFixed(2)
+                if(tr.recipient == SCRIPT_ACCOUNT && tr.amount >= strata_eqv) {
+                    newToken = uuidV1()
+                    lowdb.get('tokens').push({id:newToken,used:false}).write()
+                    transactionPool.removeTranaction(tr)
+                    msg = {status:1,data:newToken,alert:'New Token Created!.'}
+                }
+                return;
             }
-            return;
-        }
-    })
-    res.json({status:1,data:newToken,alert:'New Token Created!.'})
+        })
+    }else msg = {status:0,alert:"Invalid API Key"}
+    res.json(msg)
 })
 
 app.get("/api/wallets", (req, res)=>{
@@ -163,49 +171,48 @@ app.get("/api/transactions", (req, res)=>{
 })
 
 app.post('/api/new-wallet', (req, res)=>{
-    let newWallet = wallet.createNewWallet();
-    res.json({
-        status:1,
-        data:newWallet,
-        alert:'New Wallet Created'
-    });
+    const { api_key } = req.body;
+    let isExist = lowdb.get('api').find({key:api_key}).value()
+    if(isExist) {
+        let newWallet = wallet.createNewWallet();
+        res.json({
+            status:1,
+            data:newWallet,
+            alert:'New Wallet Created'
+        });
+    }else res.json({status:1,alert:'Invalid API Key'})
 })
 
 app.post('/api/create-transaction', (req, res)=>{
-    const { sender, recipient, type } = req.body
+    const { sender, recipient, type, api_key } = req.body
     let amount = Number(req.body.amount) + GAS_FEE;
     let msg = 'New Transaction Added To Pool'
-    let t = transaction.createTransaction({
-        sender:wallet.fetchWallet(sender),
-        recipient:wallet.fetchWallet(recipient),
-        amount: type == 'fast' ? Number(amount + 0.006) : amount
-    })
-    transactionPool.addTransaction(t)
-    if(wallet.getCurrentSupply() > TOTAL_SUPPLY || type == 'fast' ) {
-        blockchain.addBlock({transaction:t})
-        transactionPool.updateTransaction(t)
-        msg = 'New Transaction Added To Chain'
-    }
+    let isExist = lowdb.get('api').find({key:api_key}).value()
+    if(isExist) {
+        let t = transaction.createTransaction({
+            sender:wallet.fetchWallet(sender),
+            recipient:wallet.fetchWallet(recipient),
+            amount: type == 'fast' ? Number(amount + 0.006) : amount
+        })
+        transactionPool.addTransaction(t)
+        if(wallet.getCurrentSupply() > TOTAL_SUPPLY || type == 'fast' ) {
+            blockchain.addBlock({transaction:t})
+            transactionPool.updateTransaction(t)
+            msg = 'New Transaction Added To Chain'
+        }
+    }else msg = {status:0,alert:'Invalid API Key'}
     res.json(msg)
 })
 
 app.post('/api/mine-transactions', (req, res)=>{
     const {address} = req.body
-    let msg = {}
+    let msg = { status:1,data:`All Transactions in the pool have been mined` }
     if(address) {
         const mineT = miner.mineTransaction(address)
         if(mineT) {
             const { sender, recipient, amount } = mineT
             wallet.updateBalance({transaction:{ sender, recipient, amount }})
-            msg = {
-                status:1,
-                data:`New transaction added to chain`
-            }
-        }else{
-            msg = {
-                status:1,
-                data:`All Transactions in the pool have been mined`
-            }
+            msg = { status:1,data:`New transaction added to chain` }
         }
     }
     res.json(msg).status(200)
